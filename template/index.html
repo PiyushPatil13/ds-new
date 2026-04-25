@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Movie RecSys</title>
+    <style>
+        :root { --primary: #e50914; --bg: #0f0f1a; --card: #1a1a2e; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: white; display: flex; flex-direction: column; align-items: center; padding: 50px; }
+        .container { max-width: 600px; width: 100%; text-align: center; }
+        
+        /* Styled input for better integration with datalist */
+        input { 
+            padding: 12px; 
+            width: 70%; 
+            border-radius: 5px; 
+            border: none; 
+            outline: none; 
+            background: #2a2a40;
+            color: white;
+        }
+
+        button { padding: 12px 20px; background: var(--primary); color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
+        #results { margin-top: 30px; display: grid; gap: 15px; }
+        .movie-card { background: var(--card); padding: 15px; border-radius: 8px; border-left: 5px solid var(--primary); animation: fadeIn 0.5s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .search-box { display: flex; gap: 10px; justify-content: center; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>🎬 Movie Recommender</h1>
+    <p>Type a movie name to find similar titles</p>
+    
+    <div class="search-box">
+        <input type="text" id="movieInput" list="movieOptions" placeholder="Start typing a movie...">
+        
+        <datalist id="movieOptions"></datalist>
+        
+        <button onclick="getRecommendations()">Get Recs</button>
+    </div>
+
+    <div id="results"></div>
+</div>
+
+<script>
+    // --- NEW: Fetch movie list for autocomplete on page load ---
+    window.onload = async function() {
+        try {
+            const response = await fetch('http://127.0.0.1:5000/get_movie_list');
+            const movies = await response.json();
+            const datalist = document.getElementById('movieOptions');
+            
+            movies.forEach(movie => {
+                const option = document.createElement('option');
+                option.value = movie;
+                datalist.appendChild(option);
+            });
+        } catch (err) {
+            console.error("Could not load movie suggestions:", err);
+        }
+    }
+
+    async function getRecommendations() {
+        const movie = document.getElementById('movieInput').value;
+        const resultsDiv = document.getElementById('results');
+        resultsDiv.innerHTML = "Searching...";
+
+        try {
+            const response = await fetch('http://127.0.0.1:5000/recommend', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ movie: movie })
+            });
+
+            const data = await response.json();
+            resultsDiv.innerHTML = "";
+
+            if (data.error) {
+                resultsDiv.innerHTML = `<p style="color: #ff6b6b">${data.error}</p>`;
+            } else {
+                data.recommendations.forEach(title => {
+                    const card = document.createElement('div');
+                    card.className = 'movie-card';
+                    card.innerText = title;
+                    resultsDiv.appendChild(card);
+                });
+            }
+        } catch (err) {
+            resultsDiv.innerHTML = "Error connecting to Python backend.";
+        }
+    }
+</script>
+</body>
+</html>
